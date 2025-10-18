@@ -1,0 +1,9 @@
+{
+  "name": "agent-zero",
+  "private": true,
+  "scripts": {
+    "dev": "python run_ui.py",
+    "agent": "python agent.py",
+    "preload": "python preload.py"
+  }
+}

@@ -3,7 +3,38 @@ from typing import Annotated, Literal, Union
 from urllib.parse import urlparse
 from openai import BaseModel
 from pydantic import Field
+
+from python.helpers.fastmcp_compat import (
+    ensure_settings_default_factories_are_clean,
+)
+
+ensure_settings_default_factories_are_clean()
+
 from fastmcp import FastMCP
+import fastmcp  # use global settings on modern FastMCP
+from fastmcp.settings import ServerSettings
+
+
+def _get_global_server_settings() -> ServerSettings:
+    """Return the global ServerSettings object exposed by FastMCP."""
+
+    settings_module = getattr(fastmcp, "settings", None)
+    if settings_module:
+        for attr in ("server_settings", "server", "server_settings_instance"):
+            candidate = getattr(settings_module, attr, None)
+            if isinstance(candidate, ServerSettings):
+                return candidate
+
+    for attr in ("server_settings", "server_settings_instance"):
+        candidate = getattr(fastmcp, attr, None)
+        if isinstance(candidate, ServerSettings):
+            return candidate
+
+    return ServerSettings()
+
+
+FASTMCP_SERVER_SETTINGS = _get_global_server_settings()
+setattr(fastmcp, "server_settings", FASTMCP_SERVER_SETTINGS)
 
 from agent import AgentContext, AgentContextType, UserMessage
 from python.helpers.persist_chat import remove_chat
@@ -297,18 +328,20 @@ class DynamicMcpProxy:
         message_path = f"/t-{self.token}/messages/"
 
         # Update settings in the MCP server instance if provided
-        mcp_server.settings.message_path = message_path
-        mcp_server.settings.sse_path = sse_path
+        FASTMCP_SERVER_SETTINGS.message_path = message_path
+        FASTMCP_SERVER_SETTINGS.sse_path = sse_path
+
+        auth_server_provider = getattr(mcp_server, "auth_server_provider", None)
 
         # Create new MCP apps with updated settings
         with self._lock:
             self.sse_app = create_sse_app(
                 server=mcp_server,
-                message_path=mcp_server.settings.message_path,
-                sse_path=mcp_server.settings.sse_path,
-                auth_server_provider=mcp_server._auth_server_provider,
-                auth_settings=mcp_server.settings.auth,
-                debug=mcp_server.settings.debug,
+                message_path=FASTMCP_SERVER_SETTINGS.message_path,
+                sse_path=FASTMCP_SERVER_SETTINGS.sse_path,
+                auth_server_provider=auth_server_provider,
+                auth_settings=getattr(FASTMCP_SERVER_SETTINGS, "auth", None),
+                debug=getattr(FASTMCP_SERVER_SETTINGS, "debug", False),
                 routes=mcp_server._additional_http_routes,
                 middleware=[Middleware(BaseHTTPMiddleware, dispatch=mcp_middleware)],
             )
@@ -317,13 +350,20 @@ class DynamicMcpProxy:
             # doesn't work properly in our Flask/Werkzeug environment
             self.http_app = self._create_custom_http_app(
                 http_path,
-                mcp_server._auth_server_provider,
-                mcp_server.settings.auth,
-                mcp_server.settings.debug,
+                auth_server_provider,
+                getattr(FASTMCP_SERVER_SETTINGS, "auth", None),
+                getattr(FASTMCP_SERVER_SETTINGS, "debug", False),
                 mcp_server._additional_http_routes,
             )
 
-    def _create_custom_http_app(self, streamable_http_path, auth_server_provider, auth_settings, debug, routes):
+    def _create_custom_http_app(
+        self,
+        streamable_http_path,
+        auth_server_provider=None,
+        auth_settings=None,
+        debug=False,
+        routes=None,
+    ):
         """Create a custom HTTP app that manages the session manager manually."""
         from fastmcp.server.http import setup_auth_middleware_and_routes, create_base_app
         from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
