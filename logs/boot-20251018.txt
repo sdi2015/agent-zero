@@ -1,0 +1,16 @@
+Initializing framework...[0m
+Starting server...[0m
+
+[38;2;128;128;128mDebug: Starting server at http://localhost:5000 ...[0m
+INFO     [werkzeug] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://localhost:5000
+
+[38;2;255;0;0mError: Failed to pause job loop by development instance: No RFC password, cannot handle RFC calls.[0m
+WARNING  [huggingface_hub.utils._http] '(MaxRetryError("HTTPSConnectionPool(host='huggingface.co', port=443): Max retries exceeded with url: /sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))"), '(Request ID: 8d41694a-4fd8-41cc-a07d-cf523dcc8f00)')' thrown while requesting HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json
+WARNING  [huggingface_hub.utils._http] Retrying in 1s [Retry 1/5].
+WARNING  [huggingface_hub.utils._http] '(MaxRetryError("HTTPSConnectionPool(host='huggingface.co', port=443): Max retries exceeded with url: /sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))"), '(Request ID: a7a0b70d-390c-4cf4-99ca-80d0d363bacb)')' thrown while requesting HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json
+WARNING  [huggingface_hub.utils._http] Retrying in 2s [Retry 2/5].
+WARNING  [huggingface_hub.utils._http] '(MaxRetryError("HTTPSConnectionPool(host='huggingface.co', port=443): Max retries exceeded with url: /sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))"), '(Request ID: 3f517406-e82b-4c55-866f-5d40690b09a9)')' thrown while requesting HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json
+WARNING  [huggingface_hub.utils._http] Retrying in 4s [Retry 3/5].
+WARNING  [huggingface_hub.utils._http] '(MaxRetryError("HTTPSConnectionPool(host='huggingface.co', port=443): Max retries exceeded with url: /sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))"), '(Request ID: ca99f6f4-a52a-4dea-a27e-8a9d1b33fb59)')' thrown while requesting HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json
+WARNING  [huggingface_hub.utils._http] Retrying in 8s [Retry 4/5].
