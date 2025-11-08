@@ -1,0 +1,3 @@
+[intel]
+allow_remote_fetch = false
+allowlist = ["localhost", "127.0.0.1"]

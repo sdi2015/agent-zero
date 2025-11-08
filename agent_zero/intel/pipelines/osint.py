@@ -6,7 +6,6 @@ import os
 import re
 import threading
 import time
-from functools import lru_cache
 from typing import Dict
 from urllib.parse import urljoin, urlparse
 from urllib import robotparser
@@ -14,6 +13,7 @@ from urllib import robotparser
 import requests
 from bs4 import BeautifulSoup
 
+from ..config import get_config
 from ..predict import classify_text
 from ..store import save_finding
 
@@ -36,29 +36,9 @@ _robot_cache: Dict[str, robotparser.RobotFileParser | None] = {}
 _robot_lock = threading.Lock()
 
 
-def _allow_remote_fetch() -> bool:
-    value = os.environ.get("INTEL_ALLOW_REMOTE_FETCH", "false").lower()
-    return value in {"1", "true", "yes", "on"}
-
-
-@lru_cache(maxsize=1)
-def _allowlist() -> set[str]:
-    raw = os.environ.get("INTEL_ALLOWLIST", "")
-    items = {item.strip().lower() for item in raw.split(",") if item.strip()}
-    # Provide sensible defaults so local smoke tests work out of the box.
-    if not items:
-        items = {"localhost", "127.0.0.1"}
-    return items
-
-
-def _is_domain_allowed(domain: str) -> bool:
-    domain = domain.lower()
-    items = _allowlist()
-    if "*" in items:
-        return True
-    if domain in items:
-        return True
-    return any(domain.endswith(f".{item}") for item in items)
+def allowed(url: str) -> bool:
+    parsed = urlparse(url)
+    return get_config().is_domain_allowed(parsed.netloc)
 
 
 def _check_rate_limit(domain: str) -> None:
@@ -89,7 +69,9 @@ def _robots_allows(url: str) -> bool:
 
 
 def _enforce_guardrails(url: str, *, user: str | None, justification: str | None) -> None:
-    if not _allow_remote_fetch():
+    cfg = get_config()
+
+    if not cfg.allow_remote_fetch:
         raise PermissionError("remote fetching disabled via INTEL_ALLOW_REMOTE_FETCH")
 
     parsed = urlparse(url)
@@ -97,7 +79,7 @@ def _enforce_guardrails(url: str, *, user: str | None, justification: str | None
     if not domain:
         raise ValueError("unable to determine domain from URL")
 
-    if not _is_domain_allowed(domain):
+    if not cfg.is_domain_allowed(domain):
         raise PermissionError(f"domain '{domain}' not in INTEL_ALLOWLIST")
 
     _check_rate_limit(domain)
@@ -160,6 +142,7 @@ def classify_url(url: str, *, user: str | None = None, justification: str | None
 
 __all__ = [
     "IOC_RE",
+    "allowed",
     "fetch_and_clean",
     "extract_iocs",
     "risk_score",

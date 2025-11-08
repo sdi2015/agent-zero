@@ -6,6 +6,7 @@ from pydantic import AnyHttpUrl, BaseModel, Field
 
 from agent_zero.intel.predict import classify_text
 from agent_zero.intel.pipelines.osint import classify_url
+from agent_zero.intel.store import list_findings
 
 
 class TextClassificationRequest(BaseModel):
@@ -27,6 +28,11 @@ class ClassificationResponse(BaseModel):
     risk: float
     iocs: dict[str, list[str]] | None = Field(None, description="Extracted indicators of compromise")
     source_url: str | None = Field(None, description="Original URL if applicable")
+
+
+class FindingResponse(ClassificationResponse):
+    id: int
+    ts: int
 
 
 app = FastAPI(title="Agent Zero Intel API")
@@ -63,9 +69,20 @@ def classify_url_endpoint(payload: URLClassificationRequest) -> ClassificationRe
     return ClassificationResponse(**result)
 
 
+@app.get("/findings", response_model=list[FindingResponse])
+def list_findings_endpoint(limit: int = 50) -> list[FindingResponse]:
+    try:
+        rows = list_findings(limit=limit)
+    except Exception as exc:  # pragma: no cover - FastAPI will log details
+        raise _http_error(exc) from exc
+
+    return [FindingResponse(**row) for row in rows]
+
+
 __all__ = [
     "app",
     "TextClassificationRequest",
     "URLClassificationRequest",
     "ClassificationResponse",
+    "FindingResponse",
 ]
