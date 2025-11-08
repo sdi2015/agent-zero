@@ -1,0 +1,255 @@
+<html>
+  <head>
+    <title>OSINT Intelligence Console</title>
+    <link rel="stylesheet" href="/css/osint.css" />
+    <script type="module">
+      import { store } from "/components/intel/osint-store.js";
+      window.osintStore = store;
+    </script>
+  </head>
+  <body class="osint-modal-body">
+    <div x-data>
+      <template x-if="$store.osintStore">
+        <div
+          class="osint-modal"
+          x-data
+          x-create="$store.osintStore.onOpen()"
+          x-destroy="$store.osintStore.onClose()"
+        >
+          <header class="osint-header">
+            <div class="osint-header__text">
+              <h2>OSINT Intelligence Console</h2>
+              <p>
+                Classify suspicious content with Agent Zero's lightweight OSINT
+                models. Paste raw text or fetch and evaluate a remote URL
+                without leaving the workspace.
+              </p>
+            </div>
+            <div class="osint-mode-toggle" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                :aria-selected="$store.osintStore.mode === 'text'"
+                :class="{ 'is-active': $store.osintStore.mode === 'text' }"
+                @click="$store.osintStore.setMode('text')"
+              >
+                Text
+              </button>
+              <button
+                type="button"
+                role="tab"
+                :aria-selected="$store.osintStore.mode === 'url'"
+                :class="{ 'is-active': $store.osintStore.mode === 'url' }"
+                @click="$store.osintStore.setMode('url')"
+              >
+                URL Fetch
+              </button>
+            </div>
+          </header>
+
+          <section class="osint-card">
+            <template x-if="$store.osintStore.mode === 'text'">
+              <div class="osint-field">
+                <label for="osint-text">Text to classify</label>
+                <textarea
+                  id="osint-text"
+                  rows="8"
+                  class="osint-textarea"
+                  placeholder="Paste content or threat report excerpts to analyse"
+                  x-model="$store.osintStore.text"
+                ></textarea>
+                <p class="osint-hint">
+                  We will score the text locally and persist the finding in the
+                  intel store for later review.
+                </p>
+              </div>
+            </template>
+
+            <template x-if="$store.osintStore.mode === 'url'">
+              <div class="osint-url-fields">
+                <div class="osint-field">
+                  <label for="osint-url">URL to classify</label>
+                  <input
+                    id="osint-url"
+                    type="url"
+                    class="osint-input"
+                    placeholder="https://example.com/threat-advisory"
+                    x-model="$store.osintStore.url"
+                  />
+                  <p class="osint-hint">
+                    Remote fetching observes guardrails enforced by
+                    <code>INTEL_ALLOW_REMOTE_FETCH</code> and
+                    <code>INTEL_ALLOWLIST</code>.
+                  </p>
+                </div>
+
+                <div class="osint-advanced">
+                  <button
+                    type="button"
+                    class="osint-advanced__toggle"
+                    @click="$store.osintStore.showAdvanced = !$store.osintStore.showAdvanced"
+                  >
+                    <span
+                      x-text="$store.osintStore.showAdvanced ? 'Hide access justification' : 'Show access justification'"
+                    ></span>
+                    <span class="material-symbols-outlined" aria-hidden="true">
+                      expand_more
+                    </span>
+                  </button>
+                  <div
+                    class="osint-advanced__content"
+                    x-show="$store.osintStore.showAdvanced"
+                    x-transition.opacity
+                  >
+                    <div class="osint-field">
+                      <label for="osint-user">Requesting user (optional)</label>
+                      <input
+                        id="osint-user"
+                        type="text"
+                        class="osint-input"
+                        placeholder="analyst.zero"
+                        x-model="$store.osintStore.user"
+                      />
+                    </div>
+                    <div class="osint-field">
+                      <label for="osint-justification">Justification</label>
+                      <textarea
+                        id="osint-justification"
+                        rows="3"
+                        class="osint-textarea"
+                        placeholder="Explain why this URL should be fetched"
+                        x-model="$store.osintStore.justification"
+                      ></textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <div class="osint-actions">
+              <div class="osint-action-buttons">
+                <button
+                  type="button"
+                  class="osint-button osint-button--primary"
+                  :disabled="!$store.osintStore.canSubmit()"
+                  @click="$store.osintStore.classify()"
+                >
+                  <span
+                    class="osint-spinner"
+                    x-show="$store.osintStore.loading"
+                    aria-hidden="true"
+                  ></span>
+                  <span x-show="!$store.osintStore.loading">Run classification</span>
+                  <span x-show="$store.osintStore.loading">Classifying…</span>
+                </button>
+                <button
+                  type="button"
+                  class="osint-button osint-button--ghost"
+                  :disabled="$store.osintStore.loading"
+                  @click="$store.osintStore.reset()"
+                >
+                  Clear
+                </button>
+              </div>
+              <p class="osint-hint">
+                Classification requests are processed locally; URL fetching may
+                take several seconds depending on response size.
+              </p>
+            </div>
+
+            <div
+              class="osint-alert osint-alert--error"
+              x-show="$store.osintStore.error"
+              x-transition.opacity
+              role="alert"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">
+                error
+              </span>
+              <span x-text="$store.osintStore.error"></span>
+            </div>
+          </section>
+
+          <template x-if="$store.osintStore.result">
+            <section class="osint-card osint-result">
+              <header class="osint-result__header">
+                <div class="osint-result__label-group">
+                  <span class="osint-chip" :data-label="$store.osintStore.result.label_name">
+                    <span class="osint-chip__label" x-text="$store.osintStore.result.label_name"></span>
+                    <span class="osint-chip__score" x-text="$store.osintStore.formatPercent($store.osintStore.winningProbability)"></span>
+                  </span>
+                  <template x-if="$store.osintStore.result.source_url">
+                    <a
+                      class="osint-source-link"
+                      :href="$store.osintStore.result.source_url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View source
+                    </a>
+                  </template>
+                </div>
+                <div class="osint-risk">
+                  <span class="osint-risk__label">Risk score</span>
+                  <div class="osint-risk__meter" role="meter" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="$store.osintStore.riskPercent">
+                    <div
+                      class="osint-risk__fill"
+                      :style="`width: ${$store.osintStore.riskPercent}%`"
+                    ></div>
+                  </div>
+                  <span class="osint-risk__value" x-text="$store.osintStore.riskPercent + '%'" aria-live="polite"></span>
+                </div>
+              </header>
+
+              <div class="osint-probabilities">
+                <template x-for="prob in $store.osintStore.probabilitySummary" :key="prob.label">
+                  <div class="osint-probability">
+                    <div class="osint-probability__header">
+                      <span class="osint-probability__label" x-text="prob.label"></span>
+                      <span class="osint-probability__value" x-text="$store.osintStore.formatPercent(prob.value)"></span>
+                    </div>
+                    <div class="osint-probability__bar">
+                      <div
+                        class="osint-probability__fill"
+                        :style="`width: ${Math.round(Math.max(prob.value, 0) * 100)}%`"
+                      ></div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+
+              <template x-if="$store.osintStore.result.iocs && Object.keys($store.osintStore.result.iocs).length">
+                <div class="osint-iocs">
+                  <h3>Indicators of compromise</h3>
+                  <div class="osint-ioc-grid">
+                    <template x-for="(values, kind) in $store.osintStore.result.iocs" :key="kind">
+                      <div class="osint-ioc" x-show="values.length">
+                        <h4 x-text="kind"></h4>
+                        <ul>
+                          <template x-for="item in values" :key="item">
+                            <li x-text="item"></li>
+                          </template>
+                        </ul>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </template>
+
+              <footer class="osint-result__footer">
+                <button
+                  type="button"
+                  class="osint-button osint-button--ghost"
+                  @click="$store.osintStore.copyResult()"
+                >
+                  Copy JSON
+                </button>
+                <pre class="osint-json" x-text="$store.osintStore.prettyJson"></pre>
+              </footer>
+            </section>
+          </template>
+        </div>
+      </template>
+    </div>
+  </body>
+</html>
